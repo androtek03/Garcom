@@ -2,410 +2,555 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SGP - Sistema de Gerenciamento de Pedidos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MenuGestão PWA</title>
+    <!-- Tailwind CSS para Design Moderno -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
+    <!-- Ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Manifesto PWA -->
+    <link rel="manifest" href="manifest.json" id="pwa-manifest">
     <style>
-        input, button, select { touch-action: manipulation; font-size: 16px !important; }
         @media print {
             body * { visibility: hidden; }
-            #area-impressao, #area-impressao * { visibility: visible; }
-            #area-impressao { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; padding: 0; margin: 0; }
+            #secao-impressao, #secao-impressao * { visibility: visible; }
+            #secao-impressao { position: absolute; left: 0; top: 0; width: 58mm; font-family: monospace; font-size: 12px; }
             .no-print { display: none !important; }
         }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans min-h-screen flex flex-col select-none">
+<body class="bg-slate-50 text-slate-800 font-sans antialiased pb-24">
 
-    <div id="tela-login" class="flex flex-grow items-center justify-center p-4 bg-indigo-900">
-        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full space-y-6">
-            <div class="text-center">
-                <h2 class="text-3xl font-extrabold text-gray-900">GarçomNotes</h2>
-                <p class="text-sm text-gray-500 mt-2">Modo Local Ativo. Digite qualquer e-mail e senha para entrar.</p>
+    <!-- App Bar -->
+    <header class="bg-white shadow-sm border-b border-slate-100 sticky top-0 z-40">
+        <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="relative w-10 h-10 rounded-full bg-slate-200 overflow-hidden border border-slate-300 flex items-center justify-center">
+                    <img id="app-logo" src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=100" alt="Logo" class="w-full h-full object-cover">
+                </div>
+                <div>
+                    <h1 id="nome-estabelecimento-txt" class="font-bold text-slate-900 leading-tight">Meu Restaurante</h1>
+                    <span class="text-xs text-emerald-600 flex items-center gap-1 font-medium">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Firebase Conectado
+                    </span>
+                </div>
             </div>
-            <form id="form-login-local" onsubmit="realizarLoginLocal(event)" class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">E-mail</label>
-                    <input type="email" id="login-email" required class="mt-1 block w-full rounded-lg border p-3 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 text-base" placeholder="seu@email.com">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Senha</label>
-                    <input type="password" id="login-senha" required class="mt-1 block w-full rounded-lg border p-3 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 text-base" placeholder="••••••••">
-                </div>
-                
-                <button type="submit" id="btn-entrar" class="w-full bg-indigo-600 active:bg-indigo-800 text-white p-4 rounded-lg font-semibold transition flex justify-center items-center text-lg shadow-md">
-                    <span>Entrar no Sistema</span>
-                </button>
-            </form>
+            
+            <select id="seletor-visao" onchange="alternarVisao(this.value)" class="bg-slate-100 text-xs font-semibold py-1.5 px-3 rounded-lg border-none focus:ring-2 focus:ring-indigo-500">
+                <option value="garcom">Garçom / Painel</option>
+                <option value="cliente">Cliente (Cardápio)</option>
+            </select>
         </div>
-    </div>
+    </header>
 
-    <div id="conteudo-app" class="hidden flex flex-col min-h-screen">
-        <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
-            <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
-                <h1 class="text-lg font-bold tracking-wide">GarçomNotes Pro</h1>
-                <nav class="flex space-x-1 items-center">
-                    <button id="btn-garcom" onclick="switchView('garcom')" class="px-3 py-2 rounded-md bg-indigo-700 font-medium transition text-sm">Garçom</button>
-                    <button id="btn-admin" onclick="switchView('admin')" class="px-3 py-2 rounded-md hover:bg-indigo-500 font-medium transition text-sm">Admin</button>
-                    <button id="btn-sair" onclick="fazerLogoutLocal()" class="px-2.5 py-1.5 rounded-md bg-red-600 hover:bg-red-700 font-medium transition text-xs ml-2">Sair</button>
-                </nav>
-            </div>
-        </header>
+    <main class="max-w-md mx-auto px-4 pt-6">
 
-        <main class="flex-grow max-w-7xl w-full mx-auto p-4 flex flex-col mb-16">
-            <section id="view-garcom" class="space-y-6">
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
-                    <h2 class="text-xl font-bold text-gray-800">Painel do Garçom</h2>
-                    <button onclick="abrirModalPedido()" class="bg-green-600 active:bg-green-700 text-white px-4 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm">
-                        <span>+ Novo Pedido</span>
+        <!-- VISÃO: PAINEL GARÇOM / ADMIN -->
+        <div id="visao-garcom" class="space-y-6">
+            
+            <!-- Configurações do Estabelecimento -->
+            <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="settings" class="w-4 h-4"></i> Configuração do Painel
+                </h2>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Nome do Local</label>
+                        <input type="text" id="input-nome-estabelecimento" value="Meu Restaurante" oninput="atualizarNome(this.value)" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Foto de Perfil</label>
+                        <div class="flex items-center gap-2">
+                            <label for="input-foto-local" class="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-200 transition w-full justify-center">
+                                <i data-lucide="image-plus" class="w-4 h-4"></i> Escolher Imagem
+                            </label>
+                            <input type="file" id="input-foto-local" accept="image/*" onchange="carregarFotoDispositivo(event)" class="hidden">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Gerador Dinâmico e Histórico de QR Codes -->
+            <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="qr-code" class="w-4 h-4"></i> Gerenciador de QR Codes
+                </h2>
+                <div class="flex gap-2">
+                    <input type="number" id="qr-num-mesa" placeholder="Nº da Mesa" min="1" class="w-1/3 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500">
+                    <button type="button" onclick="adicionarMesaQRCode()" class="w-2/3 bg-slate-900 text-white text-sm font-semibold py-2 rounded-lg hover:bg-slate-800 transition flex items-center justify-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Gerar para Mesa
                     </button>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-pedidos"></div>
-            </section>
 
-            <section id="view-admin" class="hidden space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="bg-white p-5 rounded-xl shadow-sm space-y-4 h-fit">
-                        <h3 class="text-lg font-bold text-gray-800 border-b pb-2">Gerenciar Cardápio</h3>
-                        <form id="form-produto" onsubmit="salvarProdutoLocal(event)" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Nome do Item</label>
-                                <input type="text" id="prod-nome" required class="mt-1 block w-full rounded-md p-2.5 bg-gray-50 border text-base">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Preço (R$)</label>
-                                <input type="number" step="0.01" id="prod-preco" required class="mt-1 block w-full rounded-md p-2.5 bg-gray-50 border text-base">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700">Foto do Prato</label>
-                                <input type="file" id="prod-foto" accept="image/*" onchange="converterFotoBase64(this)" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700">
-                                <div id="preview-container" class="mt-2 hidden">
-                                    <p class="text-xs text-gray-400 mb-1">Pré-visualização:</p>
-                                    <img id="img-preview" src="" class="w-20 h-20 object-cover rounded-md border bg-gray-100">
-                                </div>
-                            </div>
-                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-base shadow-sm">Salvar no Cardápio</button>
-                        </form>
-                    </div>
-
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white p-5 rounded-xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
-                            <div>
-                                <h3 class="text-lg font-bold text-gray-800">Cardápio Digital</h3>
-                                <p class="text-xs text-gray-500 mt-1">Gere um QR Code local a partir do arquivo.</p>
-                            </div>
-                            <div id="qrcode" class="p-2 bg-white border rounded-lg shadow-sm"></div>
-                        </div>
-                        <div class="bg-white p-5 rounded-xl shadow-sm">
-                            <h3 class="text-lg font-bold text-gray-800 mb-4">Itens Cadastrados</h3>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="admin-cardapio"></div>
-                        </div>
+                <!-- Lista de QR Codes Ativos -->
+                <div class="space-y-2">
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Mesas Ativas no Firebase:</p>
+                    <div id="lista-qrcodes" class="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                        <!-- Inserido via Firebase -->
                     </div>
                 </div>
             </section>
-        </main>
-    </div>
 
-    <div id="modal-pedido" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] overflow-y-auto">
-            <h3 class="text-lg font-bold text-gray-800">Lançar Novo Pedido</h3>
-            <div>
-                <label class="block text-sm font-medium text-gray-700">Número da Mesa</label>
-                <input type="number" id="pedido-mesa" class="mt-1 block w-full rounded-md border p-2.5 text-base" placeholder="Ex: 05">
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Selecione os Itens</label>
-                <div id="modal-itens-selecao" class="space-y-2 max-h-48 overflow-y-auto border p-2 rounded-md"></div>
-            </div>
-            <div class="flex justify-end space-x-3 pt-4 border-t">
-                <button type="button" onclick="fecharModalPedido()" class="px-4 py-2.5 border rounded-md text-gray-600 text-sm">Cancelar</button>
-                <button type="button" onclick="confirmarPedidoLocal()" class="px-4 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-semibold">Confirmar Pedido</button>
-            </div>
+            <!-- Cadastrar Item -->
+            <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Cadastrar Item no Cardápio
+                </h2>
+                <form id="form-item" onsubmit="adicionarItemCardapio(event)" class="space-y-3">
+                    <div>
+                        <input type="text" id="item-nome" placeholder="Nome do prato ou bebida" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="number" step="0.01" id="item-preco" placeholder="Preço" required class="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500">
+                        <select id="item-categoria" class="w-full text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-indigo-500">
+                            <option value="Comida">Comida</option>
+                            <option value="Bebida">Bebida</option>
+                            <option value="Sobremesa">Sobremesa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="item-foto" class="flex items-center gap-2 bg-slate-50 border border-slate-200 border-dashed rounded-lg px-3 py-2 text-xs font-medium text-slate-600 cursor-pointer hover:bg-slate-100 transition justify-center">
+                            <i data-lucide="camera" class="w-4 h-4 text-slate-400"></i>
+                            <span id="txt-foto-item">Escolher Foto do Item</span>
+                        </label>
+                        <input type="file" id="item-foto" accept="image/*" onchange="atualizarNomeFotoItem(event)" class="hidden">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white text-sm font-semibold py-2.5 rounded-lg hover:bg-indigo-700 transition">
+                        Salvar no Firebase
+                    </button>
+                </form>
+            </section>
+
+            <!-- Painel de Pedidos do Garçom -->
+            <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="notebook-tabs" class="w-4 h-4"></i> Lançar Pedido / Cardápio
+                    </h2>
+                    <input type="number" id="mesa-atual-garcom" placeholder="Mesa" min="1" class="w-16 text-center text-sm font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg px-2 py-1">
+                </div>
+                <div id="lista-itens-garcom" class="divide-y divide-slate-100 max-h-72 overflow-y-auto custom-scroll pr-1"></div>
+            </section>
         </div>
-    </div>
 
-    <div id="area-impressao" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-y-auto">
-        <div class="bg-white p-5 rounded-lg max-w-sm w-full shadow-2xl border border-gray-300">
-            <div id="conteudo-cupom-texto" class="font-mono text-xs text-black whitespace-pre-wrap bg-yellow-50 p-4 border border-dashed border-gray-400 rounded"></div>
-            <div class="mt-4 grid grid-cols-2 gap-2 no-print">
-                <button onclick="fecharNota()" class="bg-gray-500 text-white px-3 py-2.5 rounded text-sm font-medium">Fechar</button>
-                <button onclick="executarBaixarNota()" class="bg-indigo-600 text-white px-3 py-2.5 rounded text-sm font-medium flex items-center justify-center gap-1">
-                    💾 Imprimir / Salvar
+        <!-- VISÃO: CLIENTE -->
+        <div id="visao-cliente" class="space-y-6 hidden">
+            <div class="bg-gradient-to-r from-indigo-600 to-violet-600 p-4 rounded-2xl text-white shadow-md">
+                <span class="text-xs bg-white/20 px-2.5 py-1 rounded-full font-medium">Autoatendimento</span>
+                <h2 class="text-xl font-bold mt-2">Faça seu pedido direto da mesa</h2>
+            </div>
+            <div id="lista-itens-cliente" class="space-y-3"></div>
+        </div>
+
+    </main>
+
+    <!-- Barra de Pedido Ativo -->
+    <div id="barra-pedido" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-xl z-50 py-3 px-4">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div>
+                <span class="text-xs text-slate-400 font-medium block">Total Acumulado</span>
+                <span id="total-pedido-txt" class="text-xl font-black text-slate-900">R$ 0,00</span>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="limparCarrinho()" class="p-2.5 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 transition">
+                    <i data-lucide="trash-2" class="w-5 h-5"></i>
+                </button>
+                <button onclick="abrirFechamentoPedido()" class="bg-emerald-600 text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-emerald-700 transition flex items-center gap-2 shadow-sm">
+                    Confirmar <i data-lucide="arrow-right" class="w-4 h-4"></i>
                 </button>
             </div>
         </div>
     </div>
 
-    <script>
-        var cardapioLocal = [];
-        var pedidosLocais = [];
-        var fotoTemporariaBase64 = "";
+    <!-- Modal de Fechamento -->
+    <div id="modal-fechamento" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-end justify-center hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-t-2xl p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center">
+                <h3 class="font-bold text-lg text-slate-900">Pedido Confirmado!</h3>
+                <button onclick="fecharModal()" class="p-1 rounded-full bg-slate-100 text-slate-400"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
 
-        // Função segura para carregar dados do localStorage sem travar o app
-        function carregarDadosMemoria() {
-            try {
-                var cardapioSalvo = localStorage.getItem("local_cardapio");
-                if (cardapioSalvo) {
-                    cardapioLocal = JSON.parse(cardapioSalvo);
-                } else {
-                    // Se estiver totalmente zerado, cria itens iniciais para não quebrar a tela
-                    cardapioLocal = [
-                        { id: "1", nome: "Refrigerante Lata", preco: 6.00, foto: "" },
-                        { id: "2", nome: "X-Burguer Tradicional", preco: 22.50, foto: "" }
-                    ];
-                    localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
-                }
+            <div id="secao-impressao" class="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 font-mono text-xs text-slate-800 space-y-3">
+                <div class="text-center border-b border-dashed border-slate-300 pb-2">
+                    <p class="font-bold text-sm uppercase" id="cupom-nome-estabelecimento">MEU RESTAURANTE</p>
+                    <p class="text-[10px] text-slate-500">Cacimba de Dentro - PB</p>
+                    <p id="cupom-data" class="text-[10px] text-slate-400 mt-1"></p>
+                </div>
+                <div class="font-bold py-1 border-b border-dashed border-slate-300 flex justify-between">
+                    <span id="cupom-mesa">MESA: 00</span>
+                    <span>Nº PEDIDO: #1002</span>
+                </div>
+                <div id="cupom-itens" class="space-y-1 py-2 border-b border-dashed border-slate-300"></div>
+                <div class="flex justify-between font-bold text-sm pt-1">
+                    <span>TOTAL:</span>
+                    <span id="cupom-total">R$ 0,00</span>
+                </div>
+            </div>
 
-                var pedidosSalvos = localStorage.getItem("local_pedidos");
-                if (pedidosSalvos) {
-                    pedidosLocais = JSON.parse(pedidosSalvos);
-                } else {
-                    pedidosLocais = [];
-                }
-            } catch (e) {
-                console.error("Erro ao ler localStorage, reiniciando estruturas vazias", e);
-                cardapioLocal = [];
-                pedidosLocais = [];
-            }
-        }
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="window.print()" class="bg-slate-900 text-white font-semibold text-sm py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition">
+                    <i data-lucide="printer" class="w-4 h-4"></i> Imprimir Nota
+                </button>
+                <button onclick="baixarNotaTxt()" class="bg-indigo-600 text-white font-semibold text-sm py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition">
+                    <i data-lucide="download" class="w-4 h-4"></i> Baixar Arquivo
+                </button>
+            </div>
+        </div>
+    </div>
 
-        window.onload = function() {
-            carregarDadosMemoria();
-            if(localStorage.getItem("local_logado") === "true") {
-                liberarAcessoApp();
-            }
+    <!-- ================= IMPORTS E ESCOPO DO FIREBASE SDK v10+ ================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Credenciais atualizadas com os dados do seu projeto: appdogarcon
+        const firebaseConfig = {
+            apiKey: "AIzaSyChOXPLuL3KF0b0EUqk-ZHgidWNHntrOUw",
+            authDomain: "appdogarcon.firebaseapp.com",
+            projectId: "appdogarcon",
+            storageBucket: "appdogarcon.firebasestorage.app",
+            messagingSenderId: "843719846950",
+            appId: "1:843719846950:web:6287572ec074cb3b61cae7"
         };
 
-        function realizarLoginLocal(event) {
-            event.preventDefault();
-            localStorage.setItem("local_logado", "true");
-            liberarAcessoApp();
-        }
+        // Inicializa o Firebase e vincula o Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        function fazerLogoutLocal() {
-            if(confirm("Deseja realmente sair do sistema?")) {
-                localStorage.removeItem("local_logado");
-                document.getElementById("conteudo-app").classList.add("hidden");
-                document.getElementById("tela-login").classList.remove("hidden");
-                document.getElementById("tela-login").classList.add("flex");
+        // --- VARIÁVEIS DE ESTADO ---
+        const imgPadraoComida = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=150";
+        let cardapio = [];
+        let listaQrsMesas = [];
+        let carrinho = {};
+        let fotoItemBase64 = "";
+
+        // Captura automática de parâmetros da URL (?mesa=3)
+        window.addEventListener("DOMContentLoaded", () => {
+            const params = new URLSearchParams(window.location.search);
+            const mesaUrl = params.get('mesa');
+            const modeUrl = params.get('mode');
+
+            if (mesaUrl) {
+                const inputMesa = document.getElementById('mesa-atual-garcom');
+                if(inputMesa) inputMesa.value = mesaUrl;
+                if(modeUrl === 'cliente') {
+                    const seletor = document.getElementById('seletor-visao');
+                    if(seletor) seletor.value = 'cliente';
+                    alternarVisao('cliente');
+                }
+            }
+            const dataCupom = document.getElementById('cupom-data');
+            if(dataCupom) dataCupom.innerText = new Date().toLocaleString('pt-BR');
+        });
+
+        // --- SINCRO EM TEMPO REAL: CARDÁPIO ---
+        onSnapshot(collection(db, "cardapio"), (snapshot) => {
+            cardapio = [];
+            snapshot.forEach(doc => {
+                cardapio.push({ id: doc.id, ...doc.data() });
+            });
+            renderizarCardapios();
+        }, (error) => {
+            console.error("Erro na escuta do cardápio (Verifique as regras do Firestore):", error);
+        });
+
+        // --- SINCRO EM TEMPO REAL: QR CODES / MESAS ---
+        onSnapshot(collection(db, "mesas_qr"), (snapshot) => {
+            listaQrsMesas = [];
+            snapshot.forEach(doc => {
+                listaQrsMesas.push({ id: doc.id, ...doc.data() });
+            });
+            renderizarListaQRCodes();
+        }, (error) => {
+            console.error("Erro na escuta das mesas (Verifique as regras do Firestore):", error);
+        });
+
+        // --- ADICIONAR ITEM AO FIREBASE ---
+        window.adicionarItemCardapio = async function(e) {
+            if (e) e.preventDefault();
+            
+            const nomeInput = document.getElementById('item-nome');
+            const precoInput = document.getElementById('item-preco');
+            const categoriaInput = document.getElementById('item-categoria');
+
+            if (!nomeInput || !precoInput || !categoriaInput) {
+                alert("Erro interno: Campos do formulário não encontrados.");
+                return;
+            }
+
+            const nome = nomeInput.value.trim();
+            const preco = parseFloat(precoInput.value);
+            const categoria = categoriaInput.value;
+            const foto = fotoItemBase64 || imgPadraoComida;
+
+            if (!nome || isNaN(preco)) {
+                alert("Por favor, preencha o nome e um preço válido.");
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "cardapio"), { nome, preco, category: categoria, foto });
+                document.getElementById('form-item').reset();
+                document.getElementById('txt-foto-item').innerText = "Escolher Foto do Item";
+                fotoItemBase64 = "";
+                alert("Item salvo com sucesso no Firebase!");
+            } catch (erro) {
+                console.error("Erro detalhado ao salvar item:", erro);
+                alert("Falha ao salvar no Firebase. Verifique o console do navegador e as Regras do seu Banco de Dados.");
             }
         }
 
-        function liberarAcessoApp() {
-            // Garante que os dados estão carregados antes de mostrar as telas
-            carregarDadosMemoria();
-            
-            document.getElementById("tela-login").classList.add("hidden");
-            document.getElementById("tela-login").classList.remove("flex");
-            document.getElementById("conteudo-app").classList.remove("hidden");
-            
-            renderizarCardapio();
-            renderizarPedidos();
+        // --- CRIAR QR CODE E ENVIAR AO FIREBASE ---
+        window.adicionarMesaQRCode = async function() {
+            const inputMesa = document.getElementById('qr-num-mesa');
+            if(!inputMesa) return;
+
+            const numMesa = inputMesa.value.trim();
+            if(!numMesa) {
+                alert("Por favor, digite o número da mesa!");
+                return;
+            }
+
+            if(listaQrsMesas.some(q => String(q.mesa) === String(numMesa))) {
+                alert(`A Mesa ${numMesa} já está ativa.`);
+                return;
+            }
+
+            try {
+                await addDoc(collection(db, "mesas_qr"), { mesa: numMesa });
+                inputMesa.value = '';
+                alert(`Mesa ${numMesa} gerada e salva no Firebase!`);
+            } catch (erro) {
+                console.error("Erro detalhado ao salvar mesa:", erro);
+                alert("Falha ao criar mesa. Verifique se as Regras do Firestore permitem gravação.");
+            }
         }
 
-        function switchView(view) {
-            document.getElementById("view-garcom").classList.toggle("hidden", view !== "garcom");
-            document.getElementById("view-admin").classList.toggle("hidden", view !== "admin");
-            document.getElementById("btn-garcom").className = view === "garcom" ? "px-3 py-2 rounded-md bg-indigo-700 font-medium text-sm" : "px-3 py-2 rounded-md hover:bg-indigo-500 font-medium text-sm";
-            document.getElementById("btn-admin").className = view === "admin" ? "px-3 py-2 rounded-md bg-indigo-700 font-medium text-sm" : "px-3 py-2 rounded-md hover:bg-indigo-500 font-medium text-sm";
-            if(view === "admin") gerarQRCodeLocal();
+        // --- REMOVER ITEM DO FIREBASE ---
+        window.removerItemDoCardapio = async function(id) {
+            if (confirm("Remover permanentemente este item do cardápio nuvem?")) {
+                try {
+                    await deleteDoc(doc(db, "cardapio", id));
+                    if (carrinho[id]) {
+                        delete carrinho[id];
+                        atualizarCalculoPrecoTotal();
+                    }
+                } catch (erro) {
+                    console.error("Erro ao deletar item: ", erro);
+                }
+            }
         }
 
-        function converterFotoBase64(input) {
-            if (input.files && input.files[0]) {
-                var file = input.files[0];
-                var reader = new FileReader();
+        // --- REMOVER QR CODE DO FIREBASE ---
+        window.removerQRCodeMesa = async function(id, numeroMesa) {
+            if(confirm(`Deseja desativar o QR Code da Mesa ${numeroMesa}?`)) {
+                try {
+                    await deleteDoc(doc(db, "mesas_qr", id));
+                } catch (erro) {
+                    console.error("Erro ao remover mesa: ", erro);
+                }
+            }
+        }
+
+        // --- RENDERIZADORES ---
+        function renderizarListaQRCodes() {
+            const boxLista = document.getElementById('lista-qrcodes');
+            if(!boxLista) return;
+            boxLista.innerHTML = '';
+
+            if(listaQrsMesas.length === 0) {
+                boxLista.innerHTML = `<p class="text-xs text-slate-400 italic py-2 text-center">Nenhum QR Code ativo no Firebase.</p>`;
+                return;
+            }
+
+            listaQrsMesas.sort((a, b) => parseInt(a.mesa) - parseInt(b.mesa));
+
+            listaQrsMesas.forEach(item => {
+                const urlLink = `${window.location.origin}${window.location.pathname}?mesa=${item.mesa}&mode=cliente`;
+                const srcFinal = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(urlLink)}`;
+
+                boxLista.innerHTML += `
+                    <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-center justify-between gap-3">
+                        <div class="w-14 h-14 bg-white p-1 rounded-lg border border-slate-200 flex-shrink-0 flex items-center justify-center">
+                            <img src="${srcFinal}" class="w-full h-full object-contain" alt="Mesa ${item.mesa}">
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-slate-800">Mesa ${item.mesa}</p>
+                            <p class="text-[10px] text-indigo-600 truncate font-medium">Autoatendimento Firebase</p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <a href="${srcFinal}" target="_blank" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 p-2 rounded-lg transition">
+                                <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                            </a>
+                            <button onclick="removerQRCodeMesa('${item.id}', '${item.mesa}')" class="bg-red-50 text-red-500 hover:bg-red-100 p-2 rounded-lg transition">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>`;
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+
+        function renderizarCardapios() {
+            const listaGarcom = document.getElementById('lista-itens-garcom');
+            const listaCliente = document.getElementById('lista-itens-cliente');
+            if(!listaGarcom || !listaCliente) return;
+            
+            listaGarcom.innerHTML = '';
+            listaCliente.innerHTML = '';
+
+            if(cardapio.length === 0) {
+                listaGarcom.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Nenhum item cadastrado no Firestore.</p>`;
+                return;
+            }
+
+            cardapio.forEach(item => {
+                const imagemExibir = item.foto || imgPadraoComida;
                 
-                reader.onload = function(e) {
-                    var img = new Image();
-                    img.src = e.target.result;
-                    
-                    img.onload = function() {
-                        var canvas = document.createElement("canvas");
-                        var max_size = 300; 
-                        var width = img.width;
-                        var height = img.height;
-                        
-                        if (width > height) {
-                            if (width > max_size) { height *= max_size / width; width = max_size; }
-                        } else {
-                            if (height > max_size) { width *= max_size / height; height = max_size; }
-                        }
-                        
-                        canvas.width = width;
-                        canvas.height = height;
-                        var ctx = canvas.getContext("2d");
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        fotoTemporariaBase64 = canvas.toDataURL("image/jpeg", 0.7);
-                        
-                        document.getElementById("img-preview").src = fotoTemporariaBase64;
-                        document.getElementById("preview-container").classList.remove("hidden");
-                    };
+                listaGarcom.innerHTML += `
+                    <div class="flex items-center justify-between py-2 gap-2">
+                        <img src="${imagemExibir}" class="w-10 h-10 rounded-lg object-cover flex-shrink-0 border">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm truncate text-slate-800">${item.nome}</p>
+                            <p class="text-xs text-indigo-600 font-bold">R$ ${parseFloat(item.preco).toFixed(2)}</p>
+                        </div>
+                        <div class="flex gap-1">
+                            <button onclick="removerItemDoCardapio('${item.id}')" class="bg-red-50 text-red-500 p-1.5 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                            <button onclick="adicionarAoCarrinho('${item.id}')" class="bg-slate-100 p-1.5 rounded-lg"><i data-lucide="plus" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>`;
+
+                const qtd = carrinho[item.id] || 0;
+                listaCliente.innerHTML += `
+                    <div class="bg-white p-3 rounded-xl border border-slate-100 flex items-center justify-between gap-3">
+                        <img src="${imagemExibir}" class="w-16 h-16 rounded-xl object-cover flex-shrink-0 border">
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-bold text-sm text-slate-800 truncate">${item.nome}</h3>
+                            <p class="text-sm font-extrabold text-indigo-600">R$ ${parseFloat(item.preco).toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg flex-shrink-0">
+                            <button onclick="removerDoCarrinho('${item.id}')" class="px-2 font-bold text-slate-600">-</button>
+                            <span class="text-xs font-bold w-4 text-center">${qtd}</span>
+                            <button onclick="adicionarAoCarrinho('${item.id}')" class="px-2 font-bold text-slate-600">+</button>
+                        </div>
+                    </div>`;
+            });
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            atualizarCalculoPrecoTotal();
+        }
+
+        // --- SISTEMA DE LOGICA COMPLEMENTAR ---
+        window.adicionarAoCarrinho = function(id) { carrinho[id] = (carrinho[id] || 0) + 1; renderizarCardapios(); }
+        window.removerDoCarrinho = function(id) { if (carrinho[id] > 0) { carrinho[id]--; if (carrinho[id] === 0) delete carrinho[id]; } renderizarCardapios(); }
+        window.limparCarrinho = function() { carrinho = {}; renderizarCardapios(); }
+
+        function atualizarCalculoPrecoTotal() {
+            let total = 0;
+            for (const id in carrinho) { 
+                const item = cardapio.find(i => i.id === id);
+                if(item) total += item.preco * carrinho[id]; 
+            }
+            const txtTotal = document.getElementById('total-pedido-txt');
+            const txtCupom = document.getElementById('cupom-total');
+            if(txtTotal) txtTotal.innerText = `R$ ${total.toFixed(2)}`;
+            if(txtCupom) txtCupom.innerText = `R$ ${total.toFixed(2)}`;
+        }
+
+        window.carregarFotoDispositivo = function(event) {
+            const arquivo = event.target.files[0];
+            if (arquivo) {
+                const leitor = new FileReader();
+                leitor.onload = function(e) { 
+                    const logo = document.getElementById('app-logo');
+                    if(logo) logo.src = e.target.result; 
                 };
-                reader.readAsDataURL(file);
+                leitor.readAsDataURL(arquivo);
             }
         }
 
-        function salvarProdutoLocal(event) {
-            event.preventDefault();
-            var nome = document.getElementById("prod-nome").value;
-            var preco = parseFloat(document.getElementById("prod-preco").value);
-            var idUnico = Date.now().toString();
-
-            var novoItem = {
-                id: idUnico,
-                nome: nome,
-                preco: preco,
-                foto: fotoTemporariaBase64 || ""
-            };
-
-            cardapioLocal.push(novoItem);
-            
-            try {
-                localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
-                alert("Produto e foto salvos com sucesso!");
-            } catch(e) {
-                alert("Erro ao salvar: memória cheia! Delete alguns itens antigos ou use fotos menores.");
+        window.atualizarNomeFotoItem = function(event) {
+            const arquivo = event.target.files[0];
+            if (arquivo) {
+                const txtFoto = document.getElementById('txt-foto-item');
+                if(txtFoto) txtFoto.innerText = arquivo.name;
+                const leitor = new FileReader();
+                leitor.onload = function(e) { fotoItemBase64 = e.target.result; };
+                leitor.readAsDataURL(arquivo);
             }
-            
-            document.getElementById("form-produto").reset();
-            document.getElementById("preview-container").classList.add("hidden");
-            fotoTemporariaBase64 = "";
-            
-            renderizarCardapio();
         }
 
-        window.excluirProdutoLocal = function(id) {
-            if (confirm("Tem certeza que deseja remover este produto do cardápio?")) {
-                cardapioLocal = cardapioLocal.filter(function(item) { return item.id !== id; });
-                localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
-                renderizarCardapio();
-            }
-        };
-
-        function abrirModalPedido() {
-            var container = document.getElementById("modal-itens-selecao");
-            container.innerHTML = "";
+        window.atualizarNome = function(nome) { 
+            const txtEst = document.getElementById('nome-estabelecimento-txt');
+            const txtCupomEst = document.getElementById('cupom-nome-estabelecimento');
+            if(txtEst) txtEst.innerText = nome; 
+            if(txtCupomEst) txtCupomEst.innerText = nome.toUpperCase();
+        }
+        
+        window.alternarVisao = function(v) { 
+            const vGarcom = document.getElementById('visao-garcom');
+            const vCliente = document.getElementById('visao-cliente');
+            if(vGarcom) vGarcom.classList.toggle('hidden', v==='cliente'); 
+            if(vCliente) vCliente.classList.toggle('hidden', v==='garcom'); 
+        }
+        
+        window.abrirFechamentoPedido = function() {
+            const cupomItens = document.getElementById('cupom-itens');
+            const inputMesaActual = document.getElementById('mesa-atual-garcom');
+            const mesaInput = inputMesaActual ? (inputMesaActual.value || 'N/A') : 'N/A';
             
-            if(cardapioLocal.length === 0) {
-                container.innerHTML = "<p class='text-sm text-red-500'>Nenhum produto cadastrado no cardápio!</p>";
-                return;
-            }
+            const cupomMesa = document.getElementById('cupom-mesa');
+            if(cupomMesa) cupomMesa.innerText = `MESA: ${mesaInput}`;
+            if(!cupomItens) return;
+            cupomItens.innerHTML = '';
 
-            cardapioLocal.forEach(function(item) {
-                var itemDiv = document.createElement("div");
-                itemDiv.className = "flex justify-between items-center bg-gray-50 p-2 rounded border";
-                itemDiv.innerHTML = "<span class='font-medium text-sm'>" + item.nome + " (R$ " + item.preco.toFixed(2) + ")</span><input type='number' min='0' value='0' class='w-16 border rounded p-1 text-center text-base qtd-item' data-id='" + item.id + "' data-nome='" + item.nome + "' data-preco='" + item.preco + "'>";
-                container.appendChild(itemDiv);
-            });
-            document.getElementById("modal-pedido").classList.replace("hidden", "flex");
-        }
-
-        function fecharModalPedido() {
-            document.getElementById("modal-pedido").classList.replace("flex", "hidden");
-        }
-
-        function confirmarPedidoLocal() {
-            var mesaInput = document.getElementById("pedido-mesa").value;
-            if(!mesaInput) return alert("Por favor, informe a mesa!");
-
-            var inputs = document.querySelectorAll(".qtd-item");
-            var itensPedido = [];
-            var total = 0;
-
-            inputs.forEach(function(input) {
-                var qtd = parseInt(input.value);
-                if(qtd > 0) {
-                    var precoItem = parseFloat(input.dataset.preco);
-                    itensPedido.push({ id: input.dataset.id, nome: input.dataset.nome, preco: precoItem, qtd: qtd });
-                    total += (precoItem * qtd);
+            let temItens = false;
+            for (const id in carrinho) {
+                const item = cardapio.find(i => i.id === id);
+                if(item){
+                    temItens = true;
+                    cupomItens.innerHTML += `
+                        <div class="flex justify-between">
+                            <span>${carrinho[id]}x ${item.nome}</span>
+                            <span>R$ ${(item.preco * carrinho[id]).toFixed(2)}</span>
+                        </div>`;
                 }
-            });
-
-            if(itensPedido.length === 0) return alert("Selecione pelo menos 1 item!");
-
-            var idPedido = Date.now().toString();
-            var novoPedido = {
-                id: idPedido,
-                mesa: mesaInput.toString(),
-                itens: itensPedido,
-                total: total,
-                data: new Date().toLocaleString("pt-BR")
-            };
-
-            pedidosLocais.push(novoPedido);
-            localStorage.setItem("local_pedidos", JSON.stringify(pedidosLocais));
-            
-            renderizarPedidos();
-            fecharModalPedido();
-            document.getElementById("pedido-mesa").value = "";
-        }
-
-        function excluirPedidoLocal(id) {
-            if(confirm("Deseja fechar ou excluir este pedido?")) {
-                pedidosLocais = pedidosLocais.filter(function(p) { return p.id !== id; });
-                localStorage.setItem("local_pedidos", JSON.stringify(pedidosLocais));
-                renderizarPedidos();
             }
-        }
-
-        function gerarNotaFiscalLocal(id) {
-            var pedido = pedidosLocais.find(function(p) { return p.id === id; });
-            if(!pedido) return;
-            
-            var area = document.getElementById("area-impressao");
-            var cupomTexto = document.getElementById("conteudo-cupom-texto");
-            var itensTxt = "";
-            
-            pedido.itens.forEach(function(it) { 
-                itensTxt += it.qtd + "x " + it.nome.padEnd(18).substring(0,18) + " R$ " + (it.preco * it.qtd).toFixed(2).padStart(6) + "\n"; 
-            });
-
-            cupomTexto.textContent = "==============================\n      GARÇOMNOTES PRO         \n==============================\nMESA: " + pedido.mesa + "\nDATA: " + pedido.data + "\n------------------------------\n" + itensTxt + "------------------------------\nTOTAL: R$ " + pedido.total.toFixed(2) + "\n==============================";
-            area.classList.replace("hidden", "flex");
-        }
-
-        function fecharNota() { document.getElementById("area-impressao").classList.replace("flex", "hidden"); }
-        function ejecutarBaixarNota() { window.print(); }
-
-        function renderizarCardapio() {
-            var container = document.getElementById("admin-cardapio");
-            if(!container) return;
-            container.innerHTML = "";
-            
-            if(cardapioLocal.length === 0) {
-                container.innerHTML = "<p class='text-sm text-gray-400 p-2 col-span-full text-center'>Nenhum item cadastrado.</p>";
+            if(!temItens) {
+                alert("Seu carrinho está vazio!");
                 return;
             }
-
-            cardapioLocal.forEach(function(item) {
-                var imagem = item.foto ? item.foto : "https://via.placeholder.com/150?text=Sem+Foto";
-                container.innerHTML += "<div class='flex items-center justify-between p-3 bg-gray-50 border rounded-lg gap-2'><div class='flex items-center gap-4'><img src='" + imagem + "' class='w-14 h-14 object-cover rounded-md bg-gray-200'><div><h4 class='font-bold text-gray-800 text-sm'>" + item.nome + "</h4><p class='text-indigo-600 font-medium text-xs'>R$ " + item.preco.toFixed(2) + "</p></div></div><button onclick=\"excluirProdutoLocal('" + item.id + "')\" class='text-xs text-red-600 hover:bg-red-100 p-2 rounded-md font-bold transition active:bg-red-200 border border-red-200 bg-white'>Excluir</button></div>";
-            });
+            const modal = document.getElementById('modal-fechamento');
+            if(modal) modal.classList.remove('hidden');
         }
+        
+        window.fecharModal = function() { 
+            const modal = document.getElementById('modal-fechamento');
+            if(modal) modal.classList.add('hidden'); 
+        }
+        
+        window.baixarNotaTxt = function() {
+            const cupomEst = document.getElementById('cupom-nome-estabelecimento');
+            const cupomMesa = document.getElementById('cupom-mesa');
+            const cupomTotal = document.getElementById('cupom-total');
 
-        function renderizarPedidos() {
-            var container = document.getElementById("lista-pedidos");
-            if(!container) return;
-            container.innerHTML = "";
-            if(!pedidosLocais || pedidosLocais.length === 0) {
-                container.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8 text-sm">Nenhum pedido em andamento nas mesas.</div>';
-                return;
+            let textoCupom = `=== ${cupomEst ? cupomEst.innerText : 'PEDIDO'} ===\n`;
+            textoCupom += `${cupomMesa ? cupomMesa.innerText : 'MESA: N/A'}\n`;
+            textoCupom += `--------------------------\n`;
+            for (const id in carrinho) {
+                const item = cardapio.find(i => i.id === id);
+                if(item) textoCupom += `${carrinho[id]}x ${item.nome} - R$ ${(item.preco * carrinho[id]).toFixed(2)}\n`;
             }
-            pedidosLocais.forEach(function(p) {
-                var list = p.itens.map(function(i) { return "<li class='text-xs text-gray-600'>" + i.qtd + "x " + i.nome + "</li>"; }).join("");
-                container.innerHTML += "<div class='bg-white rounded-xl shadow-sm border p-4 space-y-3 flex flex-col justify-between'><div><div class='flex justify-between items-center border-b pb-2'><span class='font-bold text-sm bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded'>Mesa " + p.mesa + "</span><span class='text-green-600 font-bold text-base'>R$ " + p.total.toFixed(2) + "</span></div><ul class='space-y-1 my-2 list-disc list-inside'>" + list + "</ul></div><div class='grid grid-cols-2 gap-2 pt-2 border-t'><button onclick=\"excluirPedidoLocal('" + p.id + "')\" class='text-xs text-red-600 p-2 rounded border border-red-200 active:bg-red-50'>Excluir</button><button onclick=\"gerarNotaFiscalLocal('" + p.id + "')\" class='text-xs bg-indigo-50 text-indigo-700 p-2 rounded text-center font-medium active:bg-indigo-100'>Nota Fiscal</button></div></div>";
-            });
-        }
+            textoCupom += `--------------------------\n`;
+            textoCupom += `TOTAL: ${cupomTotal ? cupomTotal.innerText : 'R$ 0,00'}\n`;
 
-        function gerarQRCodeLocal() {
-            var qrContainer = document.getElementById("qrcode");
-            if(!qrContainer) return;
-            qrContainer.innerHTML = "";
-            new QRCode(qrContainer, { text: window.location.href, width: 110, height: 110, colorDark : "#4f46e5", colorLight : "#ffffff" });
+            const blob = new Blob([textoCupom], { type: "text/plain;charset=utf-8" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `pedido_realizado.txt`;
+            link.click();
         }
     </script>
 </body>
