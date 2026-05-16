@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SGP - Sistema de Gerenciamento de Pedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        input, button, select { touch-action: manipulation; font-size: 16px !important; }
+        @media print {
+            body * { visibility: hidden; }
+            #area-impressao, #area-impressao * { visibility: visible; }
+            #area-impressao { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; padding: 0; margin: 0; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col select-none">
+
+    <div id="tela-login" class="flex flex-grow items-center justify-center p-4 bg-indigo-900">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-md w-full space-y-6">
+            <div class="text-center">
+                <h2 class="text-3xl font-extrabold text-gray-900">GarçomNotes</h2>
+                <p class="text-sm text-gray-500 mt-2">Modo Local Ativo. Digite qualquer e-mail e senha para entrar.</p>
+            </div>
+            <form id="form-login-local" onsubmit="realizarLoginLocal(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">E-mail</label>
+                    <input type="email" id="login-email" required class="mt-1 block w-full rounded-lg border p-3 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 text-base" placeholder="seu@email.com">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Senha</label>
+                    <input type="password" id="login-senha" required class="mt-1 block w-full rounded-lg border p-3 bg-gray-50 text-gray-900 focus:ring-2 focus:ring-indigo-500 text-base" placeholder="••••••••">
+                </div>
+                
+                <button type="submit" id="btn-entrar" class="w-full bg-indigo-600 active:bg-indigo-800 text-white p-4 rounded-lg font-semibold transition flex justify-center items-center text-lg shadow-md">
+                    <span>Entrar no Sistema</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="conteudo-app" class="hidden flex flex-col min-h-screen">
+        <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40">
+            <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
+                <h1 class="text-lg font-bold tracking-wide">GarçomNotes Pro</h1>
+                <nav class="flex space-x-1 items-center">
+                    <button id="btn-garcom" onclick="switchView('garcom')" class="px-3 py-2 rounded-md bg-indigo-700 font-medium transition text-sm">Garçom</button>
+                    <button id="btn-admin" onclick="switchView('admin')" class="px-3 py-2 rounded-md hover:bg-indigo-500 font-medium transition text-sm">Admin</button>
+                    <button id="btn-sair" onclick="fazerLogoutLocal()" class="px-2.5 py-1.5 rounded-md bg-red-600 hover:bg-red-700 font-medium transition text-xs ml-2">Sair</button>
+                </nav>
+            </div>
+        </header>
+
+        <main class="flex-grow max-w-7xl w-full mx-auto p-4 flex flex-col mb-16">
+            <section id="view-garcom" class="space-y-6">
+                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+                    <h2 class="text-xl font-bold text-gray-800">Painel do Garçom</h2>
+                    <button onclick="abrirModalPedido()" class="bg-green-600 active:bg-green-700 text-white px-4 py-2.5 rounded-lg font-semibold flex items-center gap-2 transition text-sm shadow-sm">
+                        <span>+ Novo Pedido</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="lista-pedidos"></div>
+            </section>
+
+            <section id="view-admin" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl shadow-sm space-y-4 h-fit">
+                        <h3 class="text-lg font-bold text-gray-800 border-b pb-2">Gerenciar Cardápio</h3>
+                        <form id="form-produto" onsubmit="salvarProdutoLocal(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Nome do Item</label>
+                                <input type="text" id="prod-nome" required class="mt-1 block w-full rounded-md p-2.5 bg-gray-50 border text-base">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Preço (R$)</label>
+                                <input type="number" step="0.01" id="prod-preco" required class="mt-1 block w-full rounded-md p-2.5 bg-gray-50 border text-base">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Foto do Prato</label>
+                                <input type="file" id="prod-foto" accept="image/*" capture="environment" onchange="converterFotoBase64(this)" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-base shadow-sm">Salvar no Cardápio</button>
+                        </form>
+                    </div>
+
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-5 rounded-xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800">Cardápio Digital</h3>
+                                <p class="text-xs text-gray-500 mt-1">Gere um QR Code local a partir do arquivo.</p>
+                            </div>
+                            <div id="qrcode" class="p-2 bg-white border rounded-lg shadow-sm"></div>
+                        </div>
+                        <div class="bg-white p-5 rounded-xl shadow-sm">
+                            <h3 class="text-lg font-bold text-gray-800 mb-4">Itens Cadastrados</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="admin-cardapio"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal-pedido" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-xl max-w-md w-full p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-gray-800">Lançar Novo Pedido</h3>
+            <div>
+                <label class="block text-sm font-medium text-gray-700">Número da Mesa</label>
+                <input type="number" id="pedido-mesa" class="mt-1 block w-full rounded-md border p-2.5 text-base" placeholder="Ex: 05">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Selecione os Itens</label>
+                <div id="modal-itens-selecao" class="space-y-2 max-h-48 overflow-y-auto border p-2 rounded-md"></div>
+            </div>
+            <div class="flex justify-end space-x-3 pt-4 border-t">
+                <button type="button" onclick="fecharModalPedido()" class="px-4 py-2.5 border rounded-md text-gray-600 text-sm">Cancelar</button>
+                <button type="button" onclick="confirmarPedidoLocal()" class="px-4 py-2.5 bg-indigo-600 text-white rounded-md text-sm font-semibold">Confirmar Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="area-impressao" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div class="bg-white p-5 rounded-lg max-w-sm w-full shadow-2xl border border-gray-300">
+            <div id="conteudo-cupom-texto" class="font-mono text-xs text-black whitespace-pre-wrap bg-yellow-50 p-4 border border-dashed border-gray-400 rounded"></div>
+            <div class="mt-4 grid grid-cols-2 gap-2 no-print">
+                <button onclick="fecharNota()" class="bg-gray-500 text-white px-3 py-2.5 rounded text-sm font-medium">Fechar</button>
+                <button onclick="executarBaixarNota()" class="bg-indigo-600 text-white px-3 py-2.5 rounded text-sm font-medium flex items-center justify-center gap-1">
+                    💾 Imprimir / Salvar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Memória Local Inicializada a partir do dispositivo
+        var cardapioLocal = JSON.parse(localStorage.getItem("local_cardapio")) || [
+            { id: "1", nome: "Refrigerante Lata", preco: 6.00, foto: "" },
+            { id: "2", nome: "X-Burguer Tradicional", preco: 22.50, foto: "" }
+        ];
+        var pedidosLocais = JSON.parse(localStorage.getItem("local_pedidos")) || [];
+        var fotoTemporariaBase64 = "";
+
+        window.onload = function() {
+            if(localStorage.getItem("local_logado") === "true") {
+                liberarAcessoApp();
+            }
+        };
+
+        function realizarLoginLocal(event) {
+            event.preventDefault();
+            localStorage.setItem("local_logado", "true");
+            liberarAcessoApp();
+        }
+
+        function fazerLogoutLocal() {
+            if(confirm("Deseja realmente sair do sistema?")) {
+                localStorage.removeItem("local_logado");
+                document.getElementById("conteudo-app").classList.add("hidden");
+                document.getElementById("tela-login").classList.remove("hidden");
+                document.getElementById("tela-login").classList.add("flex");
+            }
+        }
+
+        function liberarAcessoApp() {
+            document.getElementById("tela-login").classList.add("hidden");
+            document.getElementById("tela-login").classList.remove("flex");
+            document.getElementById("conteudo-app").classList.remove("hidden");
+            renderizarCardapio();
+            renderizarPedidos();
+        }
+
+        function switchView(view) {
+            document.getElementById("view-garcom").classList.toggle("hidden", view !== "garcom");
+            document.getElementById("view-admin").classList.toggle("hidden", view !== "admin");
+            document.getElementById("btn-garcom").className = view === "garcom" ? "px-3 py-2 rounded-md bg-indigo-700 font-medium text-sm" : "px-3 py-2 rounded-md hover:bg-indigo-500 font-medium text-sm";
+            document.getElementById("btn-admin").className = view === "admin" ? "px-3 py-2 rounded-md bg-indigo-700 font-medium text-sm" : "px-3 py-2 rounded-md hover:bg-indigo-500 font-medium text-sm";
+            if(view === "admin") gerarQRCodeLocal();
+        }
+
+        function converterFotoBase64(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    fotoTemporariaBase64 = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function salvarProdutoLocal(event) {
+            event.preventDefault();
+            var nome = document.getElementById("prod-nome").value;
+            var preco = parseFloat(document.getElementById("prod-preco").value);
+            var idUnico = Date.now().toString();
+
+            var novoItem = {
+                id: idUnico,
+                nome: nome,
+                preco: preco,
+                foto: fotoTemporariaBase64 || ""
+            };
+
+            cardapioLocal.push(novoItem);
+            localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
+            
+            document.getElementById("form-produto").reset();
+            fotoTemporariaBase64 = "";
+            
+            renderizarCardapio();
+            alert("Produto adicionado com sucesso!");
+        }
+
+        // NOVA FUNÇÃO: Excluir item do cardápio permanentemente
+        window.excluirProdutoLocal = function(id) {
+            if (confirm("Tem certeza que deseja remover este produto do cardápio?")) {
+                cardapioLocal = cardapioLocal.filter(function(item) { return item.id !== id; });
+                localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
+                renderizarCardapio();
+            }
+        };
+
+        function abrirModalPedido() {
+            var container = document.getElementById("modal-itens-selecao");
+            container.innerHTML = "";
+            cardapioLocal.forEach(function(item) {
+                var itemDiv = document.createElement("div");
+                itemDiv.className = "flex justify-between items-center bg-gray-50 p-2 rounded border";
+                itemDiv.innerHTML = "<span class='font-medium text-sm'>" + item.nome + " (R$ " + item.preco.toFixed(2) + ")</span><input type='number' min='0' value='0' class='w-16 border rounded p-1 text-center text-base qtd-item' data-id='" + item.id + "' data-nome='" + item.nome + "' data-preco='" + item.preco + "'>";
+                container.appendChild(itemDiv);
+            });
+            document.getElementById("modal-pedido").classList.replace("hidden", "flex");
+        }
+
+        function fecharModalPedido() {
+            document.getElementById("modal-pedido").classList.replace("flex", "hidden");
+        }
+
+        function confirmarPedidoLocal() {
+            var mesaInput = document.getElementById("pedido-mesa").value;
+            if(!mesaInput) return alert("Por favor, informe a mesa!");
+
+            var inputs = document.querySelectorAll(".qtd-item");
+            var itensPedido = [];
+            var total = 0;
+
+            inputs.forEach(function(input) {
+                var qtd = parseInt(input.value);
+                if(qtd > 0) {
+                    var precoItem = parseFloat(input.dataset.preco);
+                    itensPedido.push({ id: input.dataset.id, nome: input.dataset.nome, preco: precoItem, qtd: qtd });
+                    total += (precoItem * qtd);
+                }
+            });
+
+            if(itensPedido.length === 0) return alert("Selecione pelo menos 1 item!");
+
+            var idPedido = Date.now().toString();
+            var novoPedido = {
+                id: idPedido,
+                mesa: mesaInput.toString(),
+                itens: itensPedido,
+                total: total,
+                data: new Date().toLocaleString("pt-BR")
+            };
+
+            pedidosLocais.push(novoPedido);
+            localStorage.setItem("local_pedidos", JSON.stringify(pedidosLocais));
+            
+            renderizarPedidos();
+            fecharModalPedido();
+            document.getElementById("pedido-mesa").value = "";
+        }
+
+        function excluirPedidoLocal(id) {
+            if(confirm("Deseja fechar ou excluir este pedido?")) {
+                pedidosLocais = pedidosLocais.filter(function(p) { return p.id !== id; });
+                localStorage.setItem("local_pedidos", JSON.stringify(pedidosLocais));
+                renderizarPedidos();
+            }
+        }
+
+        function gerarNotaFiscalLocal(id) {
+            var pedido = pedidosLocais.find(function(p) { return p.id === id; });
+            if(!pedido) return;
+            
+            var area = document.getElementById("area-impressao");
+            var cupomTexto = document.getElementById("conteudo-cupom-texto");
+            var itensTxt = "";
+            
+            pedido.itens.forEach(function(it) { 
+                itensTxt += it.qtd + "x " + it.nome.padEnd(18).substring(0,18) + " R$ " + (it.preco * it.qtd).toFixed(2).padStart(6) + "\n"; 
+            });
+
+            cupomTexto.textContent = "==============================\n      GARÇOMNOTES PRO         \n==============================\nMESA: " + pedido.mesa + "\nDATA: " + pedido.data + "\n------------------------------\n" + itensTxt + "------------------------------\nTOTAL: R$ " + pedido.total.toFixed(2) + "\n==============================";
+            area.classList.replace("hidden", "flex");
+        }
+
+        function fecharNota() { document.getElementById("area-impressao").classList.replace("flex", "hidden"); }
+        function ejecutarBaixarNota() { window.print(); }
+
+        function renderizarCardapio() {
+            var container = document.getElementById("admin-cardapio");
+            if(!container) return;
+            container.innerHTML = "";
+            cardapioLocal.forEach(function(item) {
+                var imagem = item.foto ? item.foto : "https://via.placeholder.com/150?text=Item";
+                
+                // Div do item com o botão de excluir incluído à direita
+                container.innerHTML += "<div class='flex items-center justify-between p-3 bg-gray-50 border rounded-lg gap-2'><div class='flex items-center gap-4'><img src='" + imagem + "' class='w-14 h-14 object-cover rounded-md bg-gray-200'><div><h4 class='font-bold text-gray-800 text-sm'>" + item.nome + "</h4><p class='text-indigo-600 font-medium text-xs'>R$ " + item.preco.toFixed(2) + "</p></div></div><button onclick=\"excluirProdutoLocal('" + item.id + "')\" class='text-xs text-red-600 hover:bg-red-100 p-2 rounded-md font-bold transition active:bg-red-200 border border-red-200 bg-white'>Excluir</button></div>";
+            });
+        }
+
+        function renderizarPedidos() {
+            var container = document.getElementById("lista-pedidos");
+            if(!container) return;
+            container.innerHTML = "";
+            if(pedidosLocais.length === 0) {
+                container.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8 text-sm">Nenhum pedido em andamento nas mesas.</div>';
+                return;
+            }
+            pedidosLocais.forEach(function(p) {
+                var list = p.itens.map(function(i) { return "<li class='text-xs text-gray-600'>" + i.qtd + "x " + i.nome + "</li>"; }).join("");
+                container.innerHTML += "<div class='bg-white rounded-xl shadow-sm border p-4 space-y-3 flex flex-col justify-between'><div><div class='flex justify-between items-center border-b pb-2'><span class='font-bold text-sm bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded'>Mesa " + p.mesa + "</span><span class='text-green-600 font-bold text-base'>R$ " + p.total.toFixed(2) + "</span></div><ul class='space-y-1 my-2 list-disc list-inside'>" + list + "</ul></div><div class='grid grid-cols-2 gap-2 pt-2 border-t'><button onclick=\"excluirPedidoLocal('" + p.id + "')\" class='text-xs text-red-600 p-2 rounded border border-red-200 active:bg-red-50'>Excluir</button><button onclick=\"gerarNotaFiscalLocal('" + p.id + "')\" class='text-xs bg-indigo-50 text-indigo-700 p-2 rounded text-center font-medium active:bg-indigo-100'>Nota Fiscal</button></div></div>";
+            });
+        }
+
+        function gerarQRCodeLocal() {
+            var qrContainer = document.getElementById("qrcode");
+            if(!qrContainer) return;
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, { text: window.location.href, width: 110, height: 110, colorDark : "#4f46e5", colorLight : "#ffffff" });
+        }
+    </script>
+</body>
+</html>
