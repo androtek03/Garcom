@@ -80,7 +80,11 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Foto do Prato</label>
-                                <input type="file" id="prod-foto" accept="image/*" capture="environment" onchange="converterFotoBase64(this)" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                                <input type="file" id="prod-foto" accept="image/*" onchange="converterFotoBase64(this)" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:font-semibold file:bg-indigo-50 file:text-indigo-700">
+                                <div id="preview-container" class="mt-2 hidden">
+                                    <p class="text-xs text-gray-400 mb-1">Pré-visualização:</p>
+                                    <img id="img-preview" src="" class="w-20 h-20 object-cover rounded-md border bg-gray-100">
+                                </div>
                             </div>
                             <button type="submit" class="w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-base shadow-sm">Salvar no Cardápio</button>
                         </form>
@@ -135,15 +139,40 @@
     </div>
 
     <script>
-        // Memória Local Inicializada a partir do dispositivo
-        var cardapioLocal = JSON.parse(localStorage.getItem("local_cardapio")) || [
-            { id: "1", nome: "Refrigerante Lata", preco: 6.00, foto: "" },
-            { id: "2", nome: "X-Burguer Tradicional", preco: 22.50, foto: "" }
-        ];
-        var pedidosLocais = JSON.parse(localStorage.getItem("local_pedidos")) || [];
+        var cardapioLocal = [];
+        var pedidosLocais = [];
         var fotoTemporariaBase64 = "";
 
+        // Função segura para carregar dados do localStorage sem travar o app
+        function carregarDadosMemoria() {
+            try {
+                var cardapioSalvo = localStorage.getItem("local_cardapio");
+                if (cardapioSalvo) {
+                    cardapioLocal = JSON.parse(cardapioSalvo);
+                } else {
+                    // Se estiver totalmente zerado, cria itens iniciais para não quebrar a tela
+                    cardapioLocal = [
+                        { id: "1", nome: "Refrigerante Lata", preco: 6.00, foto: "" },
+                        { id: "2", nome: "X-Burguer Tradicional", preco: 22.50, foto: "" }
+                    ];
+                    localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
+                }
+
+                var pedidosSalvos = localStorage.getItem("local_pedidos");
+                if (pedidosSalvos) {
+                    pedidosLocais = JSON.parse(pedidosSalvos);
+                } else {
+                    pedidosLocais = [];
+                }
+            } catch (e) {
+                console.error("Erro ao ler localStorage, reiniciando estruturas vazias", e);
+                cardapioLocal = [];
+                pedidosLocais = [];
+            }
+        }
+
         window.onload = function() {
+            carregarDadosMemoria();
             if(localStorage.getItem("local_logado") === "true") {
                 liberarAcessoApp();
             }
@@ -165,9 +194,13 @@
         }
 
         function liberarAcessoApp() {
+            // Garante que os dados estão carregados antes de mostrar as telas
+            carregarDadosMemoria();
+            
             document.getElementById("tela-login").classList.add("hidden");
             document.getElementById("tela-login").classList.remove("flex");
             document.getElementById("conteudo-app").classList.remove("hidden");
+            
             renderizarCardapio();
             renderizarPedidos();
         }
@@ -182,11 +215,37 @@
 
         function converterFotoBase64(input) {
             if (input.files && input.files[0]) {
+                var file = input.files[0];
                 var reader = new FileReader();
+                
                 reader.onload = function(e) {
-                    fotoTemporariaBase64 = e.target.result;
+                    var img = new Image();
+                    img.src = e.target.result;
+                    
+                    img.onload = function() {
+                        var canvas = document.createElement("canvas");
+                        var max_size = 300; 
+                        var width = img.width;
+                        var height = img.height;
+                        
+                        if (width > height) {
+                            if (width > max_size) { height *= max_size / width; width = max_size; }
+                        } else {
+                            if (height > max_size) { width *= max_size / height; height = max_size; }
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        var ctx = canvas.getContext("2d");
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        fotoTemporariaBase64 = canvas.toDataURL("image/jpeg", 0.7);
+                        
+                        document.getElementById("img-preview").src = fotoTemporariaBase64;
+                        document.getElementById("preview-container").classList.remove("hidden");
+                    };
                 };
-                reader.readAsDataURL(input.files[0]);
+                reader.readAsDataURL(file);
             }
         }
 
@@ -204,16 +263,21 @@
             };
 
             cardapioLocal.push(novoItem);
-            localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
+            
+            try {
+                localStorage.setItem("local_cardapio", JSON.stringify(cardapioLocal));
+                alert("Produto e foto salvos com sucesso!");
+            } catch(e) {
+                alert("Erro ao salvar: memória cheia! Delete alguns itens antigos ou use fotos menores.");
+            }
             
             document.getElementById("form-produto").reset();
+            document.getElementById("preview-container").classList.add("hidden");
             fotoTemporariaBase64 = "";
             
             renderizarCardapio();
-            alert("Produto adicionado com sucesso!");
         }
 
-        // NOVA FUNÇÃO: Excluir item do cardápio permanentemente
         window.excluirProdutoLocal = function(id) {
             if (confirm("Tem certeza que deseja remover este produto do cardápio?")) {
                 cardapioLocal = cardapioLocal.filter(function(item) { return item.id !== id; });
@@ -225,6 +289,12 @@
         function abrirModalPedido() {
             var container = document.getElementById("modal-itens-selecao");
             container.innerHTML = "";
+            
+            if(cardapioLocal.length === 0) {
+                container.innerHTML = "<p class='text-sm text-red-500'>Nenhum produto cadastrado no cardápio!</p>";
+                return;
+            }
+
             cardapioLocal.forEach(function(item) {
                 var itemDiv = document.createElement("div");
                 itemDiv.className = "flex justify-between items-center bg-gray-50 p-2 rounded border";
@@ -305,10 +375,14 @@
             var container = document.getElementById("admin-cardapio");
             if(!container) return;
             container.innerHTML = "";
+            
+            if(cardapioLocal.length === 0) {
+                container.innerHTML = "<p class='text-sm text-gray-400 p-2 col-span-full text-center'>Nenhum item cadastrado.</p>";
+                return;
+            }
+
             cardapioLocal.forEach(function(item) {
-                var imagem = item.foto ? item.foto : "https://via.placeholder.com/150?text=Item";
-                
-                // Div do item com o botão de excluir incluído à direita
+                var imagem = item.foto ? item.foto : "https://via.placeholder.com/150?text=Sem+Foto";
                 container.innerHTML += "<div class='flex items-center justify-between p-3 bg-gray-50 border rounded-lg gap-2'><div class='flex items-center gap-4'><img src='" + imagem + "' class='w-14 h-14 object-cover rounded-md bg-gray-200'><div><h4 class='font-bold text-gray-800 text-sm'>" + item.nome + "</h4><p class='text-indigo-600 font-medium text-xs'>R$ " + item.preco.toFixed(2) + "</p></div></div><button onclick=\"excluirProdutoLocal('" + item.id + "')\" class='text-xs text-red-600 hover:bg-red-100 p-2 rounded-md font-bold transition active:bg-red-200 border border-red-200 bg-white'>Excluir</button></div>";
             });
         }
@@ -317,7 +391,7 @@
             var container = document.getElementById("lista-pedidos");
             if(!container) return;
             container.innerHTML = "";
-            if(pedidosLocais.length === 0) {
+            if(!pedidosLocais || pedidosLocais.length === 0) {
                 container.innerHTML = '<div class="col-span-full text-center text-gray-400 py-8 text-sm">Nenhum pedido em andamento nas mesas.</div>';
                 return;
             }
